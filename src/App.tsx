@@ -17,16 +17,46 @@ function App() {
     setValue(randomValue);
   }
 
-  async function getResponse() {
+  async function getResponse(e: any) {
+    e.preventDefault();
     if (!value) {
       setError("Error: Please ask a question");
       return;
     }
+    const options = {
+      method: "POST",
+      body: JSON.stringify({
+        history: chatHistory,
+        message: value,
+      }),
+      headers: { "Content-Type": "application/json" },
+    };
     try {
+      const response = await fetch("http://localhost:8000/gemini", options);
+      const data = await response.text();
+      setChatHistory((oldChatHistory: any) => [
+        ...oldChatHistory,
+        {
+          role: "user",
+          parts: [{ text: value }],
+        },
+        {
+          role: "model",
+          parts: [{ text: data }],
+        },
+      ]);
+      setValue("");
     } catch (err: any) {
       console.log(err);
       setError("Something went wrong! please try again later.");
     }
+  }
+  console.log(chatHistory);
+
+  function clear() {
+    setValue("");
+    setError("");
+    setChatHistory([]);
   }
 
   return (
@@ -42,22 +72,43 @@ function App() {
         </button>
       </p>
       <div className="input-container">
-        <input
-          value={value}
-          placeholder="What is your question"
-          onChange={(e) => {
-            setValue(e.target.value);
-            setError("");
+        <form
+          onSubmit={(e: any) => {
+            getResponse(e);
           }}
-        />
-        {!error && <button onClick={getResponse}>Ask me</button>}
-        {error && <button>Clear</button>}
+        >
+          <input
+            className="input"
+            value={value}
+            placeholder="What is your question"
+            onChange={(e) => {
+              setValue(e.target.value);
+              setError("");
+            }}
+          />
+          {!error && (
+            <button className="submit" type="submit">
+              Ask me
+            </button>
+          )}
+          {error && (
+            <button className="submit" onClick={clear}>
+              Clear
+            </button>
+          )}
+        </form>
       </div>
       {error && <p>{error}</p>}
       <div className="search-result">
-        <div key={""}>
-          <p className="answer"></p>
-        </div>
+        {chatHistory.map((item: any, index: any) => {
+          return (
+            <div key={index}>
+              <p className="answer">
+                {item.role} : {item.parts[0].text}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
